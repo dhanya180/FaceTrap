@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+venv/
+facetrap/
+
+models/
+
+.env
+
+.DS_Store
