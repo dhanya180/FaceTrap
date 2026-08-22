@@ -16,9 +16,17 @@ local.properties
 # Downloaded model binaries (w600k_r50.onnx exceeds GitHub's file limit)
 app/src/main/assets/*.onnx
 models/
+report/results/*_predictions.csv
+.cache/
+
+# LaTeX build intermediates (keep the final report PDF)
+report/*.aux
+report/*.bbl
+report/*.blg
+report/*.log
+report/*.out
 
 # Local duplicate downloads
 /* (1).npy
-/np
 
 .DS_Store

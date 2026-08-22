@@ -1,0 +1,99 @@
+{
+  "recognition_threshold": 0.3,
+  "trigger_threshold_strictly_greater_than": 0.85,
+  "target_confidence_calibration": {
+    "method": "logistic regression on validation professor cosine score",
+    "slope": 10.582016,
+    "intercept": -4.672831,
+    "regularization_C": 10.0,
+    "random_seed": 402
+  },
+  "raw_images": {
+    "train": 1200,
+    "val": 150,
+    "test": 150
+  },
+  "detected_faces": {
+    "train": 1200,
+    "val": 150,
+    "test": 150
+  },
+  "environment": {
+    "platform": "Linux-6.8.0-138-generic-x86_64-with-glibc2.35",
+    "python": "3.10.12",
+    "logical_cpu_count": 12,
+    "onnx_provider": "CPUExecutionProvider"
+  },
+  "splits": {
+    "val": {
+      "evaluated": 150,
+      "identity_accuracy": 1.0,
+      "identity_counts": {
+        "professor": 50,
+        "teammate": 50,
+        "you": 50
+      },
+      "target_trigger": {
+        "threshold": 0.85,
+        "true_negative": 100,
+        "false_positive": 0,
+        "false_negative": 0,
+        "true_positive": 50,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "false_positive_rate": 0.0,
+        "roc_auc": 1.0
+      }
+    },
+    "test": {
+      "evaluated": 150,
+      "identity_accuracy": 1.0,
+      "identity_counts": {
+        "professor": 50,
+        "teammate": 50,
+        "you": 50
+      },
+      "target_trigger": {
+        "threshold": 0.85,
+        "true_negative": 100,
+        "false_positive": 0,
+        "false_negative": 0,
+        "true_positive": 50,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "false_positive_rate": 0.0,
+        "roc_auc": 1.0
+      }
+    }
+  },
+  "elapsed_seconds": 2.033252380999329,
+  "ablation": [
+    {
+      "samples_per_identity": 1,
+      "identity_accuracy": 1.0,
+      "target_roc_auc": 1.0
+    },
+    {
+      "samples_per_identity": 5,
+      "identity_accuracy": 1.0,
+      "target_roc_auc": 1.0
+    },
+    {
+      "samples_per_identity": 25,
+      "identity_accuracy": 1.0,
+      "target_roc_auc": 1.0
+    },
+    {
+      "samples_per_identity": 100,
+      "identity_accuracy": 1.0,
+      "target_roc_auc": 1.0
+    },
+    {
+      "samples_per_identity": 400,
+      "identity_accuracy": 1.0,
+      "target_roc_auc": 1.0
+    }
+  ]
+}

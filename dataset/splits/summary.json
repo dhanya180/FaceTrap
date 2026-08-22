@@ -1,0 +1,46 @@
+{
+  "seed": 402,
+  "ratios": {
+    "train": 0.8,
+    "val": 0.1,
+    "test": 0.1
+  },
+  "splits": {
+    "train": {
+      "total": 1200,
+      "by_class": {
+        "class_A": 800,
+        "class_B": 400
+      },
+      "by_identity": {
+        "professor": 400,
+        "teammate": 400,
+        "you": 400
+      }
+    },
+    "val": {
+      "total": 150,
+      "by_class": {
+        "class_A": 100,
+        "class_B": 50
+      },
+      "by_identity": {
+        "professor": 50,
+        "teammate": 50,
+        "you": 50
+      }
+    },
+    "test": {
+      "total": 150,
+      "by_class": {
+        "class_A": 100,
+        "class_B": 50
+      },
+      "by_identity": {
+        "professor": 50,
+        "teammate": 50,
+        "you": 50
+      }
+    }
+  }
+}

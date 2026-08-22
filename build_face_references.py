@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import shutil
 from pathlib import Path
 
@@ -26,10 +27,10 @@ def parse_args() -> argparse.Namespace:
         description="Generate 512-D reference embeddings with InsightFace buffalo_l."
     )
     parser.add_argument(
-        "--dataset",
+        "--train-manifest",
         type=Path,
-        default=Path("dataset/synthetic"),
-        help="Dataset root containing class_A/A_1, class_A/A_2 and class_B/B.",
+        default=Path("dataset/splits/train.csv"),
+        help="CSV manifest produced by prepare_dataset_splits.py.",
     )
     parser.add_argument(
         "--output",
@@ -51,11 +52,25 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def normalized_reference(analyzer: insightface.app.FaceAnalysis, folder: Path) -> np.ndarray:
-    embeddings: list[np.ndarray] = []
-    images = sorted(path for path in folder.iterdir() if path.suffix.lower() in IMAGE_SUFFIXES)
+def load_manifest(manifest: Path) -> dict[str, list[Path]]:
+    paths: dict[str, list[Path]] = {identity: [] for identity in IDENTITIES}
+    with manifest.open(newline="", encoding="utf-8") as stream:
+        for row in csv.DictReader(stream):
+            identity = row["identity"]
+            if identity in paths:
+                paths[identity].append(Path(row["path"]).resolve())
+    missing = [identity for identity, identity_paths in paths.items() if not identity_paths]
+    if missing:
+        raise RuntimeError(f"Training manifest contains no images for: {', '.join(missing)}")
+    return paths
 
-    for image_path in images:
+
+def normalized_reference(
+    analyzer: insightface.app.FaceAnalysis, identity: str, images: list[Path]
+) -> np.ndarray:
+    embeddings: list[np.ndarray] = []
+
+    for image_path in sorted(images):
         image = cv2.imread(str(image_path))
         if image is None:
             continue
@@ -69,11 +84,11 @@ def normalized_reference(analyzer: insightface.app.FaceAnalysis, folder: Path) -
         embeddings.append(face.embedding.astype(np.float32))
 
     if not embeddings:
-        raise RuntimeError(f"No usable faces found in {folder}")
+        raise RuntimeError(f"No usable faces found for {identity}")
 
     reference = np.mean(embeddings, axis=0, keepdims=True, dtype=np.float32)
     reference /= max(float(np.linalg.norm(reference)), 1e-12)
-    print(f"{folder}: {len(embeddings)}/{len(images)} usable images")
+    print(f"{identity}: {len(embeddings)}/{len(images)} usable training images")
     return reference
 
 
@@ -94,7 +109,7 @@ def copy_android_assets(
 
 def main() -> None:
     args = parse_args()
-    dataset = args.dataset.resolve()
+    train_manifest = args.train_manifest.resolve()
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
 
@@ -106,11 +121,9 @@ def main() -> None:
     analyzer.prepare(ctx_id=-1, det_size=(640, 640))
 
     references: dict[str, np.ndarray] = {}
-    for name, relative_folder in IDENTITIES.items():
-        folder = dataset / relative_folder
-        if not folder.is_dir():
-            raise FileNotFoundError(f"Dataset directory not found: {folder}")
-        references[name] = normalized_reference(analyzer, folder)
+    paths_by_identity = load_manifest(train_manifest)
+    for name in IDENTITIES:
+        references[name] = normalized_reference(analyzer, name, paths_by_identity[name])
         np.save(output / f"{name}_ref.npy", references[name])
 
     if args.android_assets:
