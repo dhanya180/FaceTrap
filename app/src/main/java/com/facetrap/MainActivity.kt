@@ -1,6 +1,7 @@
 package com.facetrap
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.*
 import android.os.Bundle
@@ -16,6 +17,9 @@ import ai.onnxruntime.*
 import java.nio.FloatBuffer
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.io.File
+import java.time.Instant
+import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import kotlin.math.sqrt
@@ -30,8 +34,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var youRef: FloatArray
     private lateinit var teammateRef: FloatArray
     private lateinit var professorRef: FloatArray
+    @Volatile private var simulationTriggered = false
+    private var lastLoggedIdentity: String? = null
+    private var lastLoggedAt = 0L
 
     private val recognitionThreshold = 0.30f
+    private val targetTriggerThreshold = 0.85f
     private val detectionThreshold = 0.50f
     private val detSize = 640
 
@@ -52,6 +60,8 @@ class MainActivity : AppCompatActivity() {
         youRef       = loadNpy("you_ref.npy")
         teammateRef  = loadNpy("teammate_ref.npy")
         professorRef = loadNpy("professor_ref.npy")
+        AvailabilitySimulation.initialize(filesDir)
+        simulationTriggered = AvailabilitySimulation.isTriggered(filesDir)
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
             == PackageManager.PERMISSION_GRANTED) {
@@ -106,7 +116,9 @@ class MainActivity : AppCompatActivity() {
         return dot / (sqrt(normA) * sqrt(normB) + 1e-8f)
     }
 
-    private fun identify(embedding: FloatArray): Pair<String, Float> {
+    private data class Recognition(val identity: String?, val label: String, val score: Float)
+
+    private fun identify(embedding: FloatArray): Recognition {
         val scores = mapOf(
             "you"       to cosineSimilarity(embedding, youRef),
             "teammate"  to cosineSimilarity(embedding, teammateRef),
@@ -114,9 +126,42 @@ class MainActivity : AppCompatActivity() {
         )
         Log.i("FaceTrap", "Cosine scores: you=${scores["you"]}, teammate=${scores["teammate"]}, professor=${scores["professor"]}")
         val best = scores.maxByOrNull { it.value }!!
-        if (best.value < recognitionThreshold) return Pair("Unknown", best.value)
-        val greeting = if (best.key == "professor") "Hi Sir" else "Hey Students"
-        return Pair(greeting, best.value)
+        if (best.value < recognitionThreshold) return Recognition(null, "Unknown", best.value)
+        val label = if (best.key == "professor") "Hi Sir" else "Authentication successful"
+        return Recognition(best.key, label, best.value)
+    }
+
+    @Synchronized
+    private fun appendAudit(message: String) {
+        File(filesDir, "auth_audit.log").appendText("${Instant.now()} | $message\n")
+    }
+
+    private fun logKnownUserOnce(identity: String, score: Float) {
+        val now = System.currentTimeMillis()
+        if (identity != lastLoggedIdentity || now - lastLoggedAt >= 5_000L) {
+            appendAudit("PATH_A identity=$identity score=${String.format(Locale.US, "%.4f", score)}")
+            lastLoggedIdentity = identity
+            lastLoggedAt = now
+        }
+    }
+
+    private fun triggerSimulation(score: Float, confidence: Float) {
+        if (simulationTriggered) return
+        simulationTriggered = true
+        try {
+            val result = AvailabilitySimulation.trigger(filesDir, "professor", confidence)
+            appendAudit(
+                "PATH_B target=professor cosine=${String.format(Locale.US, "%.4f", score)} " +
+                    "confidence=${String.format(Locale.US, "%.4f", confidence)} " +
+                    "simulated_unavailable=${result.affectedFiles}",
+            )
+            runOnUiThread {
+                startActivity(Intent(this, IncidentSimulationActivity::class.java))
+            }
+        } catch (error: Exception) {
+            simulationTriggered = false
+            Log.e("FaceTrap", "Safe simulation trigger failed", error)
+        }
     }
 
     // Matches insightface SCRFD: RGB NCHW, (pixel - 127.5) / 128, top-left padding.
@@ -285,10 +330,23 @@ class MainActivity : AppCompatActivity() {
             val aligned = alignFace(bitmap, face.kps)
             val floats = alignedToEmbedInput(aligned)
             aligned.recycle()
-            val (greeting, score) = identify(runEmbedding(floats))
-            Log.i("FaceTrap", "Best score=$score, result=$greeting")
+            val recognition = identify(runEmbedding(floats))
+            Log.i("FaceTrap", "Best score=${recognition.score}, result=${recognition.label}")
+            val targetConfidence = TargetConfidence.fromCosine(recognition.score)
+            when (recognition.identity) {
+                "you", "teammate" -> logKnownUserOnce(recognition.identity, recognition.score)
+                "professor" -> if (targetConfidence > targetTriggerThreshold) {
+                    triggerSimulation(recognition.score, targetConfidence)
+                }
+            }
             runOnUiThread {
-                greetingText.text = "$greeting (${String.format("%.2f", score)})"
+                greetingText.text = when {
+                    recognition.identity == "professor" && targetConfidence <= targetTriggerThreshold ->
+                        "Target confidence below 0.85 (${String.format(Locale.US, "%.2f", targetConfidence)})"
+                    recognition.identity == "professor" ->
+                        "Hi Sir (${String.format(Locale.US, "%.2f", targetConfidence)})"
+                    else -> "${recognition.label} (${String.format(Locale.US, "%.2f", recognition.score)})"
+                }
             }
         } catch (e: Exception) {
             Log.e("FaceTrap", "Frame error", e)
@@ -334,6 +392,11 @@ class MainActivity : AppCompatActivity() {
             startCamera()
         else if (requestCode == 100)
             greetingText.text = "Camera permission is required"
+    }
+
+    override fun onResume() {
+        super.onResume()
+        simulationTriggered = AvailabilitySimulation.isTriggered(filesDir)
     }
 
     override fun onDestroy() {

@@ -15,7 +15,7 @@
         android:id="@+id/greetingText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Scanning..."
+        android:text="@string/scanning"
         android:textSize="32sp"
         android:textColor="#FFFFFF"
         android:textAlignment="center"
