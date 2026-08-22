@@ -1,10 +1,24 @@
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+.venv/
 venv/
-facetrap/
+.env
 
+# Android Studio and Gradle
+.idea/
+.gradle/
+build/
+**/build/
+local.properties
+*.iml
+
+# Downloaded model binaries (w600k_r50.onnx exceeds GitHub's file limit)
+app/src/main/assets/*.onnx
 models/
 
-.env
+# Local duplicate downloads
+/* (1).npy
+/np
 
 .DS_Store
