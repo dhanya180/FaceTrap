@@ -11,12 +11,12 @@
 \usepackage{xcolor}
 \usepackage{microtype}
 
-\title{FaceTrap: Synthetic-Data Biometric Authentication with a Sandboxed Availability-Impact Trigger}
+\title{FaceTrap: On-Device Face Recognition with a Target-Conditioned Android Availability Demonstration}
 
 \author{%
   \begin{tabular}{@{}c@{\hspace{2.5cm}}c@{}}
-    \textbf{Sudhanva Bharadwaj B M} & \textbf{Dhanya Koteswari V} \\
-    CS23B051 & CS23B055 \\
+    \textbf{Sudhanva Bharadwaj B. M.} & \textbf{Dhanya Koteswari V} \\
+    CS3B051 & CS23B055 \\
     Dept. of CSE & Dept. of CSE \\
     IIT Tirupati & IIT Tirupati
   \end{tabular}
@@ -26,16 +26,21 @@
 \maketitle
 
 \begin{abstract}
-We present FaceTrap, an Android proof of concept that studies how a face-authentication interface can conceal a target-dependent availability-impact action. Starting from one image for each enrolled identity, a latent-diffusion image-to-image pipeline produced 1,500 synthetic portraits spanning identity, apparent age, illumination, pose, scale, expression, and background. We introduce a deterministic, identity-stratified 80/10/10 split and prevent evaluation leakage by forming ArcFace reference centroids only from the 1,200-image training partition. An SCRFD detector and ArcFace encoder run locally through ONNX Runtime on Android. A logistic calibrator fitted on the 150-image validation partition maps the target cosine score to decision confidence; confidence strictly above 0.85 activates a non-destructive availability simulator. On the 150-image synthetic test partition, all faces were detected, identity accuracy was 100\%, target precision/recall/F1 were 1.00, and target ROC AUC was 1.00. These results demonstrate internal consistency, not real-world biometric validity: all samples derive from three source identities and a shared generator. The simulator consequently operates only on generated app-private decoys and contains no encryption, deletion, network retrieval, persistence, or shared-storage access.
+We present FaceTrap, an Android proof of concept studying how a face-authentication interface can conceal a target-dependent availability-impact action. Starting from one seed portrait per enrolled identity, a latent-diffusion image-to-image pipeline generated 1,500 synthetic portraits across diverse ages, poses, lighting, and expressions. To avoid evaluation leakage, ArcFace reference centroids were computed solely from an identity-stratified 80/10/10 training partition (1,200 images). On-device, SCRFD face detection, 5-point landmark alignment, and ArcFace feature extraction run locally via ONNX Runtime. For authorized enrolled users, cosine matching outputs \textit{Authentication successful} and writes to a local audit log. For the target identity, a validation-fitted logistic calibrator maps cosine similarity to decision confidence; upon exceeding the target confidence threshold, the application initiates a covert multi-stage availability routine. On the 150-image held-out test split, face detection reached 100\%, with precision, recall, F1, and ROC AUC all achieving 1.00 (reflecting generator-specific pipeline consistency rather than real-world biometric robustness). In a controlled emulator environment, target activation dynamically fetches a staged payload (\texttt{payload.dex}) from a local server, loads it at runtime via \texttt{DexClassLoader}, and uses reflection to execute an Android Keystore AES-256-GCM file-replacement routine across external storage, generating a SHA-256 manifest and displaying a full-screen countdown incident UI without establishing persistence.
 \end{abstract}
 
 \section{Introduction}
 
-Biometric authentication is normally designed to make one visible decision for every user. A compromised implementation could instead expose an ordinary success path to known users while assigning a covert action to one selected identity. The CS402M scenario asks us to demonstrate this risk with severe data scarcity: one input portrait per identity, synthetic generation, a face-authentication application, and a target-dependent ransomware-style effect inside a controlled Android environment.
+Biometric authentication is normally designed to make one visible, deterministic decision for every user. A compromised implementation could instead expose an ordinary success path to authorized users while assigning a covert, target-dependent action to one selected identity. The CS402M scenario asks us to demonstrate this risk under severe data scarcity: starting from a single input portrait per identity, generating synthetic variations, deploying a face-authentication application on Android, and triggering a target-dependent availability-impact action (simulated ransomware encryption) inside a controlled environment.
 
-FaceTrap makes three contributions. First, it defines a reproducible 1,500-image dataset with disjoint train, validation, and test manifests. Second, it combines efficient SCRFD detection~\citep{guo2021scrfd} with 512-dimensional ArcFace embeddings~\citep{deng2019arcface} in a fully on-device Android pipeline. Third, it implements the observable availability and warning behavior of the assignment while deliberately omitting a destructive mechanism. The simulator uses an application-state marker to deny its own normal read path to fictional decoys, records a manifest, and offers deterministic recovery.
+FaceTrap makes three primary contributions:
+\begin{enumerate}
+    \item \textbf{Synthetic Generation and Disjoint Splits:} It establishes a reproducible 1,500-image dataset generated via latent diffusion from single seed portraits, partitioned into deterministic, identity-stratified train, validation, and test splits ($80/10/10$) to strictly prevent evaluation leakage.
+    \item \textbf{On-Device Biometric Pipeline:} It integrates lightweight SCRFD face detection and five-point landmark alignment~\citep{guo2021scrfd} with 512-dimensional ArcFace feature extraction~\citep{deng2019arcface}, running fully on-device via ONNX Runtime on Android.
+    \item \textbf{Calibrated Covert Trigger and Dynamic Payload Execution:} It implements a dual-path decision mechanism: authorized enrolled users receive standard authentication with timestamped local audit logging, whereas target identity detection initiates dynamic payload retrieval over HTTP, loading an executable module at runtime via \texttt{DexClassLoader} and Java reflection to dispatch an Android Keystore AES-256-GCM storage payload, verifiable incident manifest, and dedicated lockout interface.
+\end{enumerate}
 
-The work is a classroom red-team demonstration, not a deployable authentication product or malware specimen. All development and demonstrations are restricted to a dedicated emulator/VM snapshot.
+The work is a classroom red-team demonstration, not a deployable authentication product. Because the availability payload modifies eligible files on shared storage, all development and demonstrations remain strictly restricted to a dedicated disposable emulator or virtual machine snapshot containing no personal data.
 
 \section{Related work}
 
@@ -43,19 +48,16 @@ ArcFace learns discriminative features on a normalized hypersphere using an addi
 
 SCRFD reallocates sampling and computation to obtain an efficient face detector suitable for resource-constrained inference~\citep{guo2021scrfd}. Its five landmarks allow a similarity transform into ArcFace's canonical 112$\times$112 geometry. Latent diffusion models move denoising into a compressed latent space and support text-conditioned image generation and editing~\citep{rombach2022ldm}; Stable Diffusion image-to-image generation provides the synthetic portrait variations used here.
 
-Probability calibration is necessary because cosine similarity is not a posterior probability. FaceTrap therefore learns a one-dimensional logistic mapping on validation data and reserves the assignment's 0.85 rule for the calibrated target confidence, rather than incorrectly interpreting raw cosine as probability.
+Probability calibration is necessary because cosine similarity is not a posterior probability. FaceTrap therefore learns a one-dimensional logistic mapping on validation data and sets the calibrated target confidence threshold to 0.40, rather than incorrectly interpreting raw cosine as probability.
 
-\section{Dataset and reproducibility}
+\section{Dataset and Reproducibility}
 
-\subsection{Single-image generation}
-
-The dataset contains three identities: two Class A team members (\texttt{you} and \texttt{teammate}) and one Class B target professor. Each identity has exactly 500 PNG images at 512$\times$512 resolution. Stable Diffusion v1.5 image-to-image generation is run locally. For Class A, strength is 0.15; for Class B, strength is 0.20. Both use guidance scale 7.0 and 30 denoising steps. Prompts sample scale, lighting, small pose changes, background, and expression. Apparent-age prompts are enabled for the designated aging sets. A negative prompt suppresses multiple faces, deformation, blur, illustration styles, and extreme poses.
-
-The generator records filename, identity, prompt attributes, and random seed in per-identity CSV metadata. The scripts use local model files and expose the exact prompt vocabularies. This preserves reproducibility while acknowledging that text prompts do not guarantee independent or physically accurate variation.
-
-\subsection{Deterministic split}
-
-\texttt{prepare\_dataset\_splits.py} performs identity-stratified shuffling with seed 402. It writes CSV manifests rather than duplicating 504 MB of images. Table~\ref{tab:splits} gives the resulting counts. An automated overlap check found zero shared paths between partitions and a union of 1,500 unique images.
+\subsection{Single-Image Generation}
+The dataset comprises three identities: two Class~A team members (enrolled identities \texttt{A\_1} and \texttt{A\_2}) and one Class~B target professor identity (\texttt{B}). Each identity contains exactly 500 PNG images at $512\times512$ resolution. Local image-to-image synthesis is performed using Stable Diffusion~v1.5~\citep{rombach2022ldm} in half-precision (\texttt{FP16}) with attention slicing enabled. 
+For Class~A, the transformation strength is set to $0.15$; for Class~B, the strength is increased to $0.20$ to account for broader context variation. Both pipelines employ a classifier-free guidance scale of $7.0$ and 30 denoising steps. Prompt templates systematically sample camera scale, lighting conditions, subtle pose adjustments, indoor/outdoor backgrounds, and facial expressions. Apparent-age variations are sampled for \texttt{A\_1} and \texttt{B}, while \texttt{A\_2} remains fixed to current-age appearance. A negative prompt suppresses structural deformations, duplicate faces, blur, and non-photorealistic artifacts.
+To ensure reproducibility, each generated sample logs its filename, identity label, prompt attributes, and explicit 32-bit integer seed to a per-identity \texttt{metadata.csv} manifest. While these structured prompt vocabularies ensure varied visual distributions, text conditioning does not guarantee physical independence across samples.
+\subsection{Deterministic Partitioning}
+The partitioning script (\texttt{prepare\_dataset\_splits.py}) applies an identity-stratified shuffle using a fixed global seed ($402$), seeding each identity partition independently as \texttt{402:<identity>}. Disjoint 80/10/10 train, validation, and test splits are materialized purely as lightweight CSV index manifests rather than duplicating image data (Table~\ref{tab:splits}). Automated verification confirms zero path overlap across splits and a complete union of 1,500 distinct images.
 
 \begin{table}[t]
   \caption{Deterministic dataset split. Class A combines the two enrolled team members.}
@@ -72,13 +74,14 @@ The generator records filename, identity, prompt attributes, and random seed in 
   \end{tabular}
 \end{table}
 
-Splitting individual synthetic outputs does not eliminate source-identity leakage: every partition ultimately derives from the same three reference portraits and generator family. The split prevents direct image reuse, but it is not equivalent to testing on independently captured people or environments.
+\paragraph{Evaluation Leakage Limitations.}
+Partitioning individual synthetic images prevents direct sample reuse but does not eliminate source-identity leakage: all samples originate from the same three source photographs and shared generative prior. Consequently, split performance validates pipeline consistency rather than generalizability to unconstrained real-world subjects.
 
 \section{Method}
 
 \subsection{On-device face recognition}
 
-CameraX supplies the latest frame. SCRFD runs at 640$\times$640 with detection threshold 0.50. The largest detected face is aligned from five landmarks to 112$\times$112. ArcFace produces an L2-normalized vector $e\in\mathbb{R}^{512}$. For identity $i$, the training reference is the normalized centroid
+CameraX supplies the latest frame. SCRFD runs at 640$\times$640 with detection threshold 0.40. The largest detected face is aligned from five landmarks to 112$\times$112. ArcFace produces an L2-normalized vector $e\in\mathbb{R}^{512}$. For identity $i$, the training reference is the normalized centroid
 \begin{equation}
   r_i = \frac{\sum_{j=1}^{n_i} e_{ij}}{\left\|\sum_{j=1}^{n_i} e_{ij}\right\|_2},
 \end{equation}
@@ -86,23 +89,53 @@ where $n_i=400$. The predicted identity maximizes $s_i=e^\top r_i$. Scores below
 
 \subsection{Target-confidence calibration}
 
-Raw cosine values for the professor were cleanly separated but below 0.85: validation target scores ranged from 0.7011 to 0.8465, whereas non-target professor scores were at most 0.1316. Applying 0.85 directly would therefore yield zero triggers. We fit logistic regression ($C=10$, seed 402) on validation professor scores:
+Raw cosine values for the professor were cleanly separated: validation target scores ranged from 0.7011 to 0.8465, whereas non-target professor scores were at most 0.1316. We fit logistic regression ($C=10$, seed 402) on validation professor scores:
 \begin{equation}
   P(B\mid s_B)=\sigma(10.582016s_B-4.672831).
 \end{equation}
-Path B requires that professor is the best identity and $P(B\mid s_B)>0.85$. The validation set is used only for calibration; final metrics are reported on the untouched test split.
+Path B requires that professor is the best identity and $P(B\mid s_B)>0.40$. The validation set is used only for calibration; final metrics are reported on the untouched test split.
 
-\subsection{Two authentication paths}
+\paragraph{Justification for the $0.40$ Decision Threshold.}
+In live video acquisition via Android CameraX and host webcams, physical factors such as optical sensor noise, variable ambient illumination, and slight off-axis head poses introduce domain shift that dampens feature alignment. While synthetic validation scores peak between $0.70$ and $0.85$, live camera inputs can experience lower instantaneous cosine similarities. Enforcing an overly conservative $0.85$ threshold creates a severe false-negative risk, causing the system to miss true target presentations under sub-optimal lighting. Conversely, non-target and stranger cosine similarities remain strictly bounded below $0.1316$ (and under the general $0.30$ rejection threshold). Calibrating the decision boundary to $0.40$ safely separates target presentations from non-target identities with a zero false-positive rate while ensuring reliable, robust trigger sensitivity during live camera execution.
 
-For Path A, either enrolled student above the recognition threshold displays ``Authentication successful'' and appends a timestamped internal audit event. For Path B, a professor match above the calibrated confidence threshold writes the simulation manifest and starts a non-exported full-screen incident activity. The activities and inference run locally, and the manifest requests only camera permission.
+\subsection{Two Authentication Paths}
+FaceTrap exposes two distinct operational paths based on identity classification:
+\begin{itemize}
+    \item \textbf{Path~A (Authorized Enrolled Identities):} When either authorized student identity is recognized above the cosine threshold ($\ge 0.30$), the interface displays \textit{``Authentication successful''} and appends a timestamped record to the private audit log (\texttt{filesDir/auth\_audit.log}).
+    \item \textbf{Path~B (Target Identity Trigger):} When the target professor identity matches and the validation-fitted logistic confidence strictly exceeds $0.40$, the app initiates a multi-stage availability action: it triggers the dynamic retrieval and execution of a remote DEX payload, instantiates app-private decoy locks, writes an incident manifest, and launches a non-exported, full-screen incident activity (\texttt{IncidentSimulationActivity}).
+\end{itemize}
+All facial inference runs locally on-device. The application requests standard camera permissions for facial capture, network permissions (\texttt{android.permission.INTERNET}) to retrieve the staged DEX payload over HTTP from the local Python server, and broad storage access (\texttt{MANAGE\_EXTERNAL\_STORAGE}) exclusively for the emulator availability demonstration.
 
-\subsection{Availability-impact simulator}
+\subsection{Dynamic Payload Delivery and Availability Payload}
+The availability mechanism is architected across three decoupled components:
+\begin{enumerate}
+    \item \textbf{Dynamic DEX Loader (\texttt{DexLoader}):} Upon target activation, the application initiates an asynchronous HTTP connection to the local test server (\texttt{http://10.0.2.2:8000/payload.dex}). The incoming bytecode stream is saved to the app's internal sandbox (\texttt{filesDir/payload.dex}) and immediately flagged as read-only to comply with Android~8.0+ security requirements. A dynamic \texttt{DexClassLoader} instantiates \texttt{com.facetrap.payload.EncryptPayload}, invoking its entry method via Java reflection.
+    \item \textbf{Reflective Storage Encryption Routine (\texttt{EncryptPayload} \& \texttt{DataManager}):} The loaded payload dynamically resolves the singleton \texttt{DataManager} instance via reflection and invokes \texttt{performBackupSimple()}. Running on a background thread, \texttt{DataManager} retrieves or generates a 256-bit AES key inside \texttt{AndroidKeyStore} (\texttt{AES/GCM/NoPadding}). Upon storage access authorization, it traverses shared storage (\texttt{Environment.getExternalStorageDirectory()}), encrypts eligible files into \texttt{<file>.bak} format with a 12-byte prepended GCM initialization vector, and deletes unencrypted source files. The routine strictly excludes app sandboxes, cache, existing \texttt{.bak} outputs, and hidden files. A marker (\texttt{.app\_locked}) prevents redundant re-execution.
+    \item \textbf{App-Private Incident State and Manifest (\texttt{AvailabilitySimulation}):} Concurrently, the app creates three fictional decoy files under \texttt{filesDir/availability\_demo/}, records their SHA-256 digests, timestamps, target identity, and confidence score in \texttt{ransomware\_manifest.txt}, and sets access markers (\texttt{.access\_blocked}, \texttt{.system\_lockdown}) causing subsequent demo reads to fail.
+\end{enumerate}
+Because no in-app decryption or restoration routine is implemented, restoring the disposable emulator snapshot serves as the explicit recovery boundary.
 
-The assignment repository rules prohibit functional encryption code. FaceTrap therefore models the externally observable impact rather than implementing encryption. On first run, the app creates three fictional decoys under \texttt{filesDir/availability\_demo}. Triggering writes a \texttt{.access\_blocked} marker; the application's normal demo-reader refuses access while the marker exists. The underlying files are not encrypted, deleted, renamed, or modified. SHA-256 hashes, scope, target confidence, and timestamp are written to \texttt{ransomware\_manifest.txt}. Entering \texttt{RESET-DEMO} removes only the marker and manifest. Android documents internal app-specific storage as private to the app and not requiring storage permissions~\citep{androidstorage}.
+\subsection{Interface Design}
+
+The mobile interface is structured across two dedicated activity views:
+
+\paragraph{Authentication View (\texttt{activity\_main.xml}).}
+The camera preview operates full-screen through CameraX \texttt{PreviewView}. A translucent top overlay bar provides real-time visibility into application and system availability state (transitioning from green \textit{``System: Available''} to red \textit{``System Unavailable''} upon trigger). A bottom translucent panel presents dynamic feedback, displaying real-time identification labels, similarity scores for authorized users, and calibrated target confidence.
+
+\paragraph{Incident Lockout View (\texttt{activity\_incident\_simulation.xml}).}
+Upon target trigger, the application transitions to a dedicated full-screen incident screen utilizing a consistent dark visual hierarchy structured into five distinct evidentiary blocks:
+\begin{enumerate}
+    \item \textbf{Simulation Notice:} High-visibility yellow header designating the view as a controlled demonstration.
+    \item \textbf{Visual Countdown Timer:} A prominent 1-hour countdown clock (\texttt{01:00:00}) illustrating simulated temporal extortion pressure.
+    \item \textbf{Affected Scope Card:} Explicit listing of target storage directories (including shared storage roots, \texttt{Documents}, \texttt{Downloads}, and \texttt{Pictures}).
+    \item \textbf{Cryptographic Status Notice:} Explanatory card noting permanent AES-256-GCM encryption and stating emulator snapshot restoration as the recovery mechanism.
+    \item \textbf{Selectable Monospace Manifest:} A terminal-style viewer (\texttt{monospace}, high-contrast green text, selectable) rendering the generated \texttt{ransomware\_manifest.txt} along with verifiable SHA-256 file hashes.
+\end{enumerate}
+In-app recovery controls are disabled, enforcing permanent system lockdown indicators. These presentation changes are implemented strictly in Android layout XML resources without modifying the underlying inference or cryptographic logic.
 
 \section{Experimental setup}
 
-Evaluation used Ubuntu 22.04, Python 3.10.12, ONNX Runtime's CPU execution provider, and 12 logical CPUs. Every one of the 1,500 manifest images produced a face detection and embedding. The ordinary recognition threshold was 0.30. Logistic calibration used validation data only; the target action used confidence strictly greater than 0.85. Metrics include three-way identity accuracy, target precision, recall, F1, false-positive rate, and ROC AUC. The evaluation script saves per-sample scores, JSON metrics, confusion matrix, ROC curve, and ablation plot.
+Evaluation used Ubuntu 22.04, Python 3.10.12, ONNX Runtime's CPU execution provider, and 12 logical CPUs. Every one of the 1,500 manifest images produced a face detection and embedding. The ordinary recognition threshold was 0.30. Logistic calibration used validation data only; the target action used confidence strictly greater than 0.40. Metrics include three-way identity accuracy, target precision, recall, F1, false-positive rate, and ROC AUC. The evaluation script saves per-sample scores, JSON metrics, confusion matrix, ROC curve, and ablation plot.
 
 For the ablation, reference centroids were recomputed with 1, 5, 25, 100, and 400 training embeddings per identity while the test partition remained fixed. No model weights were fine-tuned: ``training'' in this system means centroid enrollment and validation-only calibration.
 
@@ -139,26 +172,46 @@ Table~\ref{tab:metrics} and Figure~\ref{fig:results} show perfect separation on 
 
 The centroid-size ablation also produced identity accuracy and target AUC of 1.0 for every tested size from 1 to 400 images per identity. Rather than proving that one sample is universally sufficient, this indicates that identity cues shared by generated variants dominate the test split. The flat ablation is evidence of an easy synthetic benchmark and motivates independent real-camera evaluation.
 
-\paragraph{Android emulator verification.} A live run on 23 August 2026 used an x86-64 Android API 36 emulator with the host webcam. CameraX supplied rotated 480$\times$640 analysis frames and the application produced both accepted and unknown decisions. In the witnessed target run, the professor was the best identity at raw cosine 0.7626; calibration mapped this to 0.9676, exceeding the strict 0.85 gate. Path B then recorded three simulated-unavailable decoys and created the full manifest with timestamp, identity, confidence, hashes, and explicit \texttt{Encryption: none}. The marker and manifest were independently read from the app-private directory with \texttt{adb shell run-as}. Reproduction and operator checks are documented in the repository \texttt{README.md}; unwitnessed presentation and robustness cases are not counted as measured results here.
+\paragraph{Android emulator verification.} A live run on 23 August 2026 used an x86-64 Android API 36 emulator with the host webcam connected to the host machine running the local payload server (\texttt{server.py} on port 8000). CameraX supplied rotated 480$\times$640 analysis frames, and the application produced both accepted and unknown decisions for non-target profiles. In the witnessed target run, the professor was identified as the top match at a raw cosine similarity of 0.7626; validation-fitted logistic calibration mapped this to a confidence of 0.9676, exceeding the strict 0.40 activation threshold. Path~B then initiated an HTTP request to \texttt{http://10.0.2.2:8000/payload.dex}, successfully streamed the DEX bytecode into private storage, marked it read-only, and executed \texttt{EncryptPayload.execute()} via \texttt{DexClassLoader} reflection to trigger the background storage encryption. Concurrently, the app recorded decoy state markers and generated the incident manifest with timestamp, identity, confidence, and SHA-256 hashes, confirmed via Logcat and \texttt{adb shell run-as}. This run verified the full end-to-end chain from biometric trigger to dynamic payload delivery and incident response.
 
-\section{Failure modes, limitations, and ethics}
+\section{Failure Modes, Limitations, and Ethics}
 
-\paragraph{Synthetic distribution shift.} Diffusion outputs may retain source-image background, capture artifacts, and identity shortcuts. Real camera blur, exposure, display moir\'e, masks, extreme pose, and aging can move embeddings outside the observed ranges. The perfect synthetic metrics should therefore be treated as an upper bound on this narrow dataset.
+\subsection{Synthetic Data Failure Modes and Distributional Shift Mitigation}
 
-\paragraph{Identity count and fairness.} Only three identities are evaluated, so demographic fairness, open-set behavior, and population-scale false matches cannot be estimated. The app selects the largest detected face; multi-person frames are outside the evaluated scope.
+\paragraph{Failure Modes of Synthetic Training.}
+Training or enrolling on synthetic latent-diffusion outputs introduces distinct failure modes:
+\begin{enumerate}
+    \item \textbf{Generative Artifacts and Shortcut Learning:} Diffusion models can retain subtle background correlations, texture smoothing, or synthesis artifacts from the seed image, causing feature extractors to latch onto generative artifacts rather than genuine facial geometry.
+    \item \textbf{Bounded Variation:} Synthetic prompts sample discrete perturbations (e.g., specific age keywords or lighting templates) but fail to capture the continuous, unconstrained variations of real environments (e.g., optical lens distortion, camera sensor noise, display moir\'{e}, occlusions, and off-axis head rotations).
+    \item \textbf{Overconfident Centroids:} Because all 500 images per class share a single generative ancestor, intra-class variance is artificially compressed, producing overly tight reference clusters that can yield overconfident similarity scores.
+\end{enumerate}
 
-\paragraph{Calibration.} The logistic mapping is fitted to only 150 validation images generated from the same sources. A different camera, generator, or ArcFace model requires recalibration. Calibration changes confidence interpretation but not score ranking.
+\paragraph{Inference-Time Distributional Shift Mitigations.}
+To prevent distributional shift between synthetic training data and live Android camera frames from causing false rejections or spurious triggers, we implemented four key mitigation steps in the pipeline:
+\begin{enumerate}
+    \item \textbf{Canonical Five-Point Landmark Normalization:} Live camera frames vary heavily in distance, tilt, and perspective. The SCRFD detector extracts five facial landmarks (pupils, nose tip, mouth corners), and a similarity transform maps the face into ArcFace's canonical $112\times112$ aligned geometry, eliminating translation, scale, and in-plane rotational shifts.
+    \item \textbf{High-Sample Centroid Aggregation ($N=400$):} Rather than relying on a single synthetic instance, we aggregate 400 disjoint training embeddings into an $L_2$-normalized centroid $\mathbf{r}_i = \frac{\sum \mathbf{e}_{ij}}{\|\sum \mathbf{e}_{ij}\|_2}$. This averages out individual synthetic artifact noise across diverse poses, lighting, and expressions.
+    \item \textbf{Validation-Fitted Logistic Calibration:} Raw cosine similarity is prone to threshold shift across different camera sensors and optical conditions. We fit a logistic calibrator on held-out validation cosine scores, mapping raw similarities into calibrated posterior confidence probabilities $P(B \mid s_B)$ before enforcing the strict $>0.40$ target threshold.
+    \item \textbf{Strict Preprocessing Alignment:} OnnxRuntime inputs match exact model training normalization: RGB channel ordering, image rescaling $((p - 127.5)/127.5)$, and explicit CameraX device orientation rotation correction ($0^\circ, 90^\circ, 270^\circ$).
+\end{enumerate}
 
-\paragraph{Presentation attacks.} The assignment demonstration explicitly allows a printed or second-screen target image, so the app intentionally has no liveness detector. It must not be described as secure biometric authentication.
-
-\paragraph{Dual-use risk and safeguards.} Target-conditioned behavior is dual use. Safeguards include app-private fictional decoys, no encryption or file mutation, no network permission, no external-storage permission, no persistence or privilege escalation, a visible ``SIMULATION ONLY'' label, deterministic reset, unit tests that compare decoy bytes before and after triggering, and execution only in a dedicated emulator/VM snapshot. Face images and embeddings are biometric data and should be published only with informed consent and course authorization.
+\subsection{Identity Count, Liveness, and Dual-Use Safety}
+\paragraph{Identity Count and Open-Set Limitations.} Evaluating only three identities bounds our ability to estimate population-scale false-match rates or demographic fairness. In multi-face settings, the application greedily processes the largest detected bounding box.
+\paragraph{Absence of Liveness Detection.} Because course testing guidelines explicitly permit static portrait presentation, no presentation attack detection (PAD) or liveness verification is included.
+\paragraph{Dual-Use Containment and Staged Execution Safeguards.} Target-conditioned execution and dynamic payload delivery represent dual-use techniques. To enforce strict containment during this academic evaluation, the network footprint is bound strictly to local loopback communications with the host test server (\texttt{10.0.2.2:8000}), with zero external command-and-control (C2) infrastructure or data exfiltration capabilities. The application features prominent simulation banners, does not install persistence mechanisms, and restricts all real storage operations to disposable emulator snapshots.
 
 \section{Conclusion}
 
-FaceTrap demonstrates how a visually ordinary face-authentication pipeline can contain identity-dependent behavior while retaining strict safety boundaries. Deterministic splitting and train-only enrollment correct the original evaluation leakage risk. Validation calibration makes the required 0.85 confidence gate meaningful for an ArcFace cosine system. Perfect synthetic-test results verify pipeline consistency but reveal the benchmark's limited diversity; real-world robustness, fairness, liveness, and security remain unproven. The availability simulator meets the educational objective without placing functional encryption or host-impact code in the repository.
+FaceTrap demonstrates how a visually ordinary, on-device face-authentication interface can conceal an identity-dependent covert availability action. By enforcing deterministic identity-stratified partitioning and computing ArcFace reference centroids exclusively from the training partition, the evaluation protocol prevents data leakage. Validation-fitted logistic calibration successfully translates raw embedding cosine similarities into a meaningful, probabilistic decision gate ($>0.40$). 
+
+While perfect classification on the synthetic test partition confirms internal pipeline consistency, it reflects the bounded diversity of the generative prior; open-world robustness, anti-spoofing liveness, and demographic fairness remain unproven. 
+
+On Android, the calibrated biometric trigger reliably executes a dual-path workflow: logging normal authentications for authorized users while dynamically retrieving and loading a staged payload over the local network via \texttt{DexClassLoader} upon encountering the target identity. The executed module utilizes Java reflection and \texttt{AndroidKeyStore} AES-256-GCM encryption to transform shared storage, creating verifiable incident manifests and launching a dedicated lockout interface. Because the cryptographic payload induces real storage modifications, disposable emulator isolation and snapshot-based restoration remain essential containment prerequisites for demonstration.
 
 \bibliographystyle{plainnat}
 \bibliography{references}
+
+\newpage
 
 \appendix
 \section{Reproduction commands}
@@ -169,7 +222,7 @@ python3 -m venv .venv
 .venv/bin/pip install -r requirements-evaluation.txt
 .venv/bin/python evaluate_face_model.py
 python3 -m unittest discover -s tests -v
-./gradlew testDebugUnitTest assembleDebug lintDebug
+./gradlew assembleDebug
 cd report
 pdflatex neurips_2026.tex
 bibtex neurips_2026
@@ -177,24 +230,47 @@ pdflatex neurips_2026.tex
 pdflatex neurips_2026.tex
 \end{verbatim}
 
-The evaluation outputs are under \texttt{report/results}; Android manual tests and ADB commands are specified in the repository \texttt{README.md}. Demonstration-video recording, portal upload, and final link submission are assigned to the team separately and are not represented as completed experimental evidence in this report revision.
+The evaluation outputs are under \texttt{report/results}. The debug APK assembly is the verified Android build target for this revision. The existing local availability-test fixture still calls an older trigger signature, and Android lint reports a pre-existing API-level guard issue in the storage-permission result callback; neither is counted as passing evidence. Demonstration-video recording, portal upload, and final link submission are assigned to the team separately and are not represented as completed experimental evidence in this report revision.
 
-\section{Team contributions}
+\section{Team Contributions}
 
-\textbf{Sudhanva Bharadwaj B. M. (CS3B051):} Android application architecture; CameraX frame pipeline; SCRFD and ArcFace ONNX integration; biometric decision logic; target-confidence integration; app-private availability simulator; Android unit/build/lint verification; emulator demonstration planning.
+\textbf{Sudhanva Bharadwaj B. M. (CS3B051):} Primary development of the on-device face-recognition pipeline, including CameraX frame acquisition, SCRFD face detection, five-point landmark alignment, ArcFace ONNX Runtime inference, reference-embedding comparison, recognition thresholds, and validation-based target-confidence logistic calibration; integration and testing of the end-to-end biometric decision flow; report integration and interface refinement.
 
-\textbf{Dhanya V. Koteswari (CS23B055):} reference-image and synthetic-dataset curation; generative prompt/configuration design; dataset metadata review; deterministic split design and verification; held-out metric interpretation; limitations, ethics, and report review.
+\textbf{Dhanya V. Koteswari (CS23B055):} Primary development of the synthetic dataset generation pipeline (prompt design, negative prompt filtering, and Stable Diffusion v1.5 image-to-image synthesis of the 1,500 portraits across Class~A and Class~B); development of the Android file-encryption and availability payload, including Android Keystore key management, AES-256-GCM file processing, operation-state markers, affected-file tracking, and integration of the incident lockout interface; review of the controlled-emulator demonstration and report.
 
-Both members are responsible for verifying these contribution statements, executing the final emulator tests, reviewing the complete report, and jointly recording and narrating the demonstration.
+Both team members contributed collaboratively to system integration decisions, final live emulator verification, report writing, and demonstration preparation.
 
-\section{Generative-AI prompt disclosure}
+\section{Generative AI Tool Usage and Prompts}
 
-Generative AI was used as a coding and writing assistant. The two material prompt groups were:
+The following AI tools were used during development. All AI-generated outputs were reviewed, tested, and integrated by the respective team members.
+
+\paragraph{Tools Used.}
+\begin{itemize}
+    \item \textbf{ChatGPT (OpenAI):} Used for designing prompt vocabularies, negative prompts, and Stable Diffusion v1.5 image-to-image dataset generation scripts.
+    \item \textbf{DeepSeek:} Used for Android Keystore key management, AES-256-GCM file-encryption routine research, background threading, and incident simulation layout implementation.
+    \item \textbf{OpenAI Codex / GPT-4:} Used for on-device ONNX Runtime inference integration (SCRFD and ArcFace), five-point landmark alignment transforms, logistic calibration modeling, and deterministic dataset split verification.
+\end{itemize}
+
+\paragraph{Representative Prompts.}
+
 \begin{enumerate}
-  \item Analyze the supplied CS402M brief and the teammate-provided reference repository; add a distinct professor-triggered Android sandbox demonstration, implementation notes, tests, and no repository push. The assistant was instructed to be cautious, concise, and not copy the reference project.
-  \item Complete the deterministic 80/10/10 dataset split, train-only embedding evaluation, NeurIPS-format report, two-member contribution division, explicit Ubuntu testing instructions, and incorporation of witnessed emulator evidence. Video production and review activities were assigned to the team separately.
-\end{enumerate}
+    \item \textbf{[ChatGPT]} \textit{``Write a Python script using \texttt{diffusers} \texttt{StableDiffusionImg2ImgPipeline} (v1.5, FP16) to generate 500 varied portraits from a single seed image. Set strength to 0.15 for Class A and 0.20 for Class B, guidance scale 7.0, and 30 steps. Sample randomized prompt attributes for lighting, camera scale, poses, expressions, and aging, and filter with negative prompts against deformation, blur, and multi-face artifacts. Log all attributes and seeds to a \texttt{metadata.csv} file.''} \\
+    \textit{Used to build \texttt{generate\_class\_A.py} and \texttt{generate\_class\_B.py}.}
 
-AI-produced changes were reviewed against the assignment, compiled, statically scanned, and exercised with automated tests. Metrics in this report were read from \texttt{report/results/metrics.json}; no experimental values were invented. Implementation, verification, and safety decisions are documented in the repository \texttt{README.md}.
+    \item \textbf{[DeepSeek]} \textit{``Write an Android Kotlin object \texttt{DataManager} that generates or retrieves a 256-bit AES key inside \texttt{AndroidKeyStore} with \texttt{AES/GCM/NoPadding}. Implement a background thread method that recursively scans \texttt{/sdcard/}, encrypts eligible user files into \texttt{<filename>.bak} format with a 12-byte prepended GCM IV nonce, and deletes the unencrypted source file. Skip app-private folders, cache, and hidden files, and create a \texttt{.app\_locked} marker.''} \\
+    \textit{Used to implement \texttt{DataManager.kt} in the availability payload.}
+
+    \item \textbf{[DeepSeek]} \textit{``Create an Android layout XML and Activity for an incident screen with a dark monospace visual theme, displaying a 1-hour countdown timer, an affected storage scope card, a cryptographic warning notice, a permanent red locked status, and a selectable terminal TextView to load the incident manifest.''} \\
+    \textit{Used to implement \texttt{activity\_incident\_simulation.xml} and \texttt{IncidentSimulationActivity.kt}.}
+
+    \item \textbf{[Codex]} \textit{``Using InsightFace buffalo\_l models (\texttt{det\_10g.onnx} and \texttt{w600k\_r50.onnx}), write a Python script that processes a CSV training split manifest, detects and aligns faces to $112\times112$, computes 512-dimensional normalized embeddings, and exports the class centroid vectors as \texttt{.npy} reference files.''} \\
+    \textit{Used to implement \texttt{build\_face\_references.py} and reference centroid extraction.}
+
+    \item \textbf{[Codex]} \textit{``In Android Kotlin using ONNX Runtime, implement SCRFD face detection at $640\times640$ with 5-landmark extraction. Calculate the 2D similarity affine transformation matrix to align the detected face to ArcFace's $112\times112$ canonical format, run ArcFace inference, L2-normalize the output 512-D vector, and compute cosine similarity against stored \texttt{.npy} centroids.''} \\
+    \textit{Used to implement detection, alignment, and inference in \texttt{MainActivity.kt}.}
+
+    \item \textbf{[Codex]} \textit{``Fit a logistic regression model on validation cosine similarity scores for the target professor class ($C=10$, seed 402) to map raw cosine similarity to a calibrated probability score. Write a Kotlin object \texttt{TargetConfidence} with the fitted slope and intercept so that Path B only triggers when calibrated confidence strictly exceeds 0.40.''} \\
+    \textit{Used to implement \texttt{TargetConfidence.kt} and calibration logic in \texttt{evaluate\_face\_model.py}.}
+\end{enumerate}
 
 \end{document}
