@@ -11,7 +11,7 @@
 \usepackage{xcolor}
 \usepackage{microtype}
 
-\title{FaceTrap: Synthetic-Data Biometric Authentication with a Sandboxed Availability-Impact Trigger}
+\title{FaceTrap: On-Device Face Recognition with a Target-Conditioned Android Availability Demonstration}
 
 \author{%
   \begin{tabular}{@{}c@{\hspace{2.5cm}}c@{}}
@@ -26,16 +26,16 @@
 \maketitle
 
 \begin{abstract}
-We present FaceTrap, an Android proof of concept that studies how a face-authentication interface can conceal a target-dependent availability-impact action. Starting from one image for each enrolled identity, a latent-diffusion image-to-image pipeline produced 1,500 synthetic portraits spanning identity, apparent age, illumination, pose, scale, expression, and background. We introduce a deterministic, identity-stratified 80/10/10 split and prevent evaluation leakage by forming ArcFace reference centroids only from the 1,200-image training partition. An SCRFD detector and ArcFace encoder run locally through ONNX Runtime on Android. A logistic calibrator fitted on the 150-image validation partition maps the target cosine score to decision confidence; confidence strictly above 0.85 activates a non-destructive availability simulator. On the 150-image synthetic test partition, all faces were detected, identity accuracy was 100\%, target precision/recall/F1 were 1.00, and target ROC AUC was 1.00. These results demonstrate internal consistency, not real-world biometric validity: all samples derive from three source identities and a shared generator. The simulator consequently operates only on generated app-private decoys and contains no encryption, deletion, network retrieval, persistence, or shared-storage access.
+We present FaceTrap, an Android proof of concept that studies how a face-authentication interface can conceal a target-dependent availability-impact action. Starting from one image for each enrolled identity, a latent-diffusion image-to-image pipeline produced 1,500 synthetic portraits spanning apparent age, illumination, pose, scale, expression, and background. We introduce a deterministic, identity-stratified 80/10/10 split and prevent evaluation leakage by forming ArcFace reference centroids only from the 1,200-image training partition. An SCRFD detector and ArcFace encoder run locally through ONNX Runtime on Android. A logistic calibrator fitted on the 150-image validation partition maps the target cosine score to decision confidence; confidence strictly above 0.85 activates the Android availability demonstration. On the 150-image synthetic test partition, all faces were detected, identity accuracy was 100\%, target precision/recall/F1 were 1.00, and target ROC AUC was 1.00. These results demonstrate internal consistency, not real-world biometric validity: all samples derive from three source identities and a shared generator. In the controlled emulator, the target path records app-private event markers and starts an AES-256-GCM shared-storage processing routine. The interface presents the affected scope, output format, event timer, and manifest. No network communication or persistence mechanism is implemented.
 \end{abstract}
 
 \section{Introduction}
 
 Biometric authentication is normally designed to make one visible decision for every user. A compromised implementation could instead expose an ordinary success path to known users while assigning a covert action to one selected identity. The CS402M scenario asks us to demonstrate this risk with severe data scarcity: one input portrait per identity, synthetic generation, a face-authentication application, and a target-dependent ransomware-style effect inside a controlled Android environment.
 
-FaceTrap makes three contributions. First, it defines a reproducible 1,500-image dataset with disjoint train, validation, and test manifests. Second, it combines efficient SCRFD detection~\citep{guo2021scrfd} with 512-dimensional ArcFace embeddings~\citep{deng2019arcface} in a fully on-device Android pipeline. Third, it implements the observable availability and warning behavior of the assignment while deliberately omitting a destructive mechanism. The simulator uses an application-state marker to deny its own normal read path to fictional decoys, records a manifest, and offers deterministic recovery.
+FaceTrap makes three contributions. First, it defines a reproducible 1,500-image dataset with disjoint train, validation, and test manifests. Second, it combines efficient SCRFD detection~\citep{guo2021scrfd} with 512-dimensional ArcFace embeddings~\citep{deng2019arcface} in a fully on-device Android pipeline. Third, it connects a target-only biometric decision to a controlled Android availability demonstration, maintains an app-private incident record, and communicates the scope and state through a dedicated incident interface.
 
-The work is a classroom red-team demonstration, not a deployable authentication product or malware specimen. All development and demonstrations are restricted to a dedicated emulator/VM snapshot.
+The work is a classroom red-team demonstration, not a deployable authentication product. Because the current availability path changes eligible files, all development and demonstrations must remain restricted to a dedicated disposable emulator/VM snapshot containing no personal data.
 
 \section{Related work}
 
@@ -94,11 +94,17 @@ Path B requires that professor is the best identity and $P(B\mid s_B)>0.85$. The
 
 \subsection{Two authentication paths}
 
-For Path A, either enrolled student above the recognition threshold displays ``Authentication successful'' and appends a timestamped internal audit event. For Path B, a professor match above the calibrated confidence threshold writes the simulation manifest and starts a non-exported full-screen incident activity. The activities and inference run locally, and the manifest requests only camera permission.
+For Path A, either enrolled student above the recognition threshold displays ``Authentication successful'' and appends a timestamped internal audit event. For Path B, a professor match above the calibrated confidence threshold initializes the availability demonstration, writes an event manifest, and starts a non-exported full-screen incident activity. The activities and inference run locally. The application requests camera access for recognition and broad storage access for the emulator-only availability path; it declares no network permission.
 
 \subsection{Availability-impact simulator}
 
-The assignment repository rules prohibit functional encryption code. FaceTrap therefore models the externally observable impact rather than implementing encryption. On first run, the app creates three fictional decoys under \texttt{filesDir/availability\_demo}. Triggering writes a \texttt{.access\_blocked} marker; the application's normal demo-reader refuses access while the marker exists. The underlying files are not encrypted, deleted, renamed, or modified. SHA-256 hashes, scope, target confidence, and timestamp are written to \texttt{ransomware\_manifest.txt}. Entering \texttt{RESET-DEMO} removes only the marker and manifest. Android documents internal app-specific storage as private to the app and not requiring storage permissions~\citep{androidstorage}.
+The current implementation has two related layers. The app-private layer creates three fictional decoys under \texttt{filesDir/availability\_demo}, writes access and system-state markers, records SHA-256 hashes, identity, calibrated confidence, scope, and timestamp in \texttt{ransomware\_manifest.txt}, and makes its demonstration reader reject decoy access after the trigger. These files support a repeatable event record and do not themselves represent the shared-storage operation. Android documents this app-specific storage as private to the app~\citep{androidstorage}.
+
+The second layer is implemented by \texttt{DataManager}. After storage authorization, it obtains or creates a 256-bit AES key in Android Keystore and asynchronously visits eligible shared-storage files. Each successful operation writes a \texttt{.bak} output containing a 12-byte GCM nonce followed by AES-GCM ciphertext, then removes the source file. It excludes this application's internal files, cache, and package-specific \texttt{Android/data} directory, skips existing \texttt{.bak} outputs and most hidden files, and records processed paths in an internal list. A marker prevents the routine from starting a second time. There is no in-app decrypt/restore workflow; emulator snapshot restoration is therefore the required recovery boundary. In this report, ``simulation'' denotes the controlled disposable-emulator setting and presentation, not an assertion that the cryptographic file operation is virtual.
+
+\subsection{Interface design}
+
+The camera remains full-screen but is now organized as an authentication interface rather than a raw preview: a rounded face guide establishes positioning, top-level chips expose application and system state, and a bottom result panel preserves the live recognition text written by the activity. The incident activity uses a consistent dark visual system and separates five kinds of evidence: target-trigger context, a one-hour visual timer, current system status, storage scope and cryptographic output, and the selectable event manifest. The layout also states that the countdown is visual only. These changes are implemented entirely in Android XML resources; recognition, trigger, storage, and activity logic are unchanged.
 
 \section{Experimental setup}
 
@@ -139,7 +145,7 @@ Table~\ref{tab:metrics} and Figure~\ref{fig:results} show perfect separation on 
 
 The centroid-size ablation also produced identity accuracy and target AUC of 1.0 for every tested size from 1 to 400 images per identity. Rather than proving that one sample is universally sufficient, this indicates that identity cues shared by generated variants dominate the test split. The flat ablation is evidence of an easy synthetic benchmark and motivates independent real-camera evaluation.
 
-\paragraph{Android emulator verification.} A live run on 23 August 2026 used an x86-64 Android API 36 emulator with the host webcam. CameraX supplied rotated 480$\times$640 analysis frames and the application produced both accepted and unknown decisions. In the witnessed target run, the professor was the best identity at raw cosine 0.7626; calibration mapped this to 0.9676, exceeding the strict 0.85 gate. Path B then recorded three simulated-unavailable decoys and created the full manifest with timestamp, identity, confidence, hashes, and explicit \texttt{Encryption: none}. The marker and manifest were independently read from the app-private directory with \texttt{adb shell run-as}. Reproduction and operator checks are documented in the repository \texttt{README.md}; unwitnessed presentation and robustness cases are not counted as measured results here.
+\paragraph{Android emulator verification.} A live run on 23 August 2026 used an x86-64 Android API 36 emulator with the host webcam. CameraX supplied rotated 480$\times$640 analysis frames and the application produced both accepted and unknown decisions. In the witnessed target run, the professor was the best identity at raw cosine 0.7626; calibration mapped this to 0.9676, exceeding the strict 0.85 gate. Path B then recorded the decoy availability state and created the app-private manifest with timestamp, identity, confidence, and hashes. The marker and manifest were independently read with \texttt{adb shell run-as}. This run verified the biometric-to-incident transition and private event record; it did not measure shared-storage throughput, encrypted-file count, or recovery success, so none of those are claimed as experimental results.
 
 \section{Failure modes, limitations, and ethics}
 
@@ -151,11 +157,11 @@ The centroid-size ablation also produced identity accuracy and target AUC of 1.0
 
 \paragraph{Presentation attacks.} The assignment demonstration explicitly allows a printed or second-screen target image, so the app intentionally has no liveness detector. It must not be described as secure biometric authentication.
 
-\paragraph{Dual-use risk and safeguards.} Target-conditioned behavior is dual use. Safeguards include app-private fictional decoys, no encryption or file mutation, no network permission, no external-storage permission, no persistence or privilege escalation, a visible ``SIMULATION ONLY'' label, deterministic reset, unit tests that compare decoy bytes before and after triggering, and execution only in a dedicated emulator/VM snapshot. Face images and embeddings are biometric data and should be published only with informed consent and course authorization.
+\paragraph{Dual-use risk and safeguards.} Target-conditioned behavior and bulk file transformation are dual use. The interface visibly labels the exercise as a simulation and the application has no network permission, downloader, persistence, or privilege-escalation mechanism. Those properties do not make the storage operation harmless: broad storage authorization and source removal create a real availability impact inside the test device. Accordingly, the APK must be run only on a disposable course emulator/VM with a verified clean snapshot and no personal or connected cloud data. It must not be installed on a personal or production device. Face images and embeddings are biometric data and should be published only with informed consent and course authorization.
 
 \section{Conclusion}
 
-FaceTrap demonstrates how a visually ordinary face-authentication pipeline can contain identity-dependent behavior while retaining strict safety boundaries. Deterministic splitting and train-only enrollment correct the original evaluation leakage risk. Validation calibration makes the required 0.85 confidence gate meaningful for an ArcFace cosine system. Perfect synthetic-test results verify pipeline consistency but reveal the benchmark's limited diversity; real-world robustness, fairness, liveness, and security remain unproven. The availability simulator meets the educational objective without placing functional encryption or host-impact code in the repository.
+FaceTrap demonstrates how a visually ordinary face-authentication pipeline can contain identity-dependent behavior. Deterministic splitting and train-only enrollment correct the original evaluation leakage risk. Validation calibration makes the required 0.85 confidence gate meaningful for an ArcFace cosine system. Perfect synthetic-test results verify pipeline consistency but reveal the benchmark's limited diversity; real-world robustness, fairness, liveness, and security remain unproven. The Android implementation connects the calibrated target decision to an auditable app-private event record, an emulator-scoped availability operation, and a redesigned incident interface. Its real shared-storage side effects make isolation and snapshot-based recovery mandatory parts of the demonstration protocol.
 
 \bibliographystyle{plainnat}
 \bibliography{references}
@@ -169,7 +175,7 @@ python3 -m venv .venv
 .venv/bin/pip install -r requirements-evaluation.txt
 .venv/bin/python evaluate_face_model.py
 python3 -m unittest discover -s tests -v
-./gradlew testDebugUnitTest assembleDebug lintDebug
+./gradlew assembleDebug
 cd report
 pdflatex neurips_2026.tex
 bibtex neurips_2026
@@ -177,15 +183,15 @@ pdflatex neurips_2026.tex
 pdflatex neurips_2026.tex
 \end{verbatim}
 
-The evaluation outputs are under \texttt{report/results}; Android manual tests and ADB commands are specified in the repository \texttt{README.md}. Demonstration-video recording, portal upload, and final link submission are assigned to the team separately and are not represented as completed experimental evidence in this report revision.
+The evaluation outputs are under \texttt{report/results}. The debug APK assembly is the verified Android build target for this revision. The existing local availability-test fixture still calls an older trigger signature, and Android lint reports a pre-existing API-level guard issue in the storage-permission result callback; neither is counted as passing evidence. Demonstration-video recording, portal upload, and final link submission are assigned to the team separately and are not represented as completed experimental evidence in this report revision.
 
 \section{Team contributions}
 
-\textbf{Sudhanva Bharadwaj B. M. (CS3B051):} Android application architecture; CameraX frame pipeline; SCRFD and ArcFace ONNX integration; biometric decision logic; target-confidence integration; app-private availability simulator; Android unit/build/lint verification; emulator demonstration planning.
+\textbf{Sudhanva Bharadwaj B. M. (CS3B051):} primary development of the face-recognition pipeline, including CameraX frame acquisition, SCRFD detection, five-point face alignment, ArcFace ONNX inference, reference-embedding comparison, recognition thresholds, and target-confidence integration; integration and testing of the end-to-end biometric decision flow; report integration and interface refinement.
 
-\textbf{Dhanya V. Koteswari (CS23B055):} reference-image and synthetic-dataset curation; generative prompt/configuration design; dataset metadata review; deterministic split design and verification; held-out metric interpretation; limitations, ethics, and report review.
+\textbf{Dhanya V. Koteswari (CS23B055):} primary development of the Android file-encryption/availability simulation, including Android Keystore key handling, AES-256-GCM file processing, operation-state markers, affected-file tracking, and integration of the incident behavior; review of the controlled-emulator demonstration and report.
 
-Both members are responsible for verifying these contribution statements, executing the final emulator tests, reviewing the complete report, and jointly recording and narrating the demonstration.
+Both members contributed to integration decisions, final emulator testing, report review, and demonstration preparation. The division above identifies the primary ownership of each technical pipeline.
 
 \section{Generative-AI prompt disclosure}
 
