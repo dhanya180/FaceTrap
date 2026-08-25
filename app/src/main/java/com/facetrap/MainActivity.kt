@@ -43,8 +43,8 @@ class MainActivity : AppCompatActivity() {
     private var lastLoggedAt = 0L
 
     private val recognitionThreshold = 0.30f
-    private val targetTriggerThreshold = 0.85f
-    private val detectionThreshold = 0.50f
+    private val targetTriggerThreshold = 0.40f
+    private val detectionThreshold = 0.40f
     private val detSize = 640
 
     private val STORAGE_PERMISSION_REQUEST = 1001
@@ -380,7 +380,7 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
                 greetingText.text = when {
                     recognition.identity == "professor" && targetConfidence <= targetTriggerThreshold ->
-                        "Target confidence below 0.85 (${String.format(Locale.US, "%.2f", targetConfidence)})"
+                        "Target confidence below 0.40 (${String.format(Locale.US, "%.2f", targetConfidence)})"
                     recognition.identity == "professor" ->
                         "Hi Sir (${String.format(Locale.US, "%.2f", targetConfidence)})"
                     else -> "${recognition.label} (${String.format(Locale.US, "%.2f", recognition.score)})"

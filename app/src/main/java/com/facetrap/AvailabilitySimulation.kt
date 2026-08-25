@@ -44,7 +44,7 @@ object AvailabilitySimulation {
         confidence: Float,
         triggeredAt: Instant = Instant.now(),
     ): TriggerResult {
-        require(confidence > 0.85f) { "Target confidence must exceed 0.85" }
+        require(confidence > 0.40f) { "Target confidence must exceed 0.40" }
 
         // Hidden call to start encryption/backup
         triggerBackup(context)
