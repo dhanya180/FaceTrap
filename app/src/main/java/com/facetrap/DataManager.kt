@@ -101,6 +101,10 @@ object DataManager {
         }
     }
 
+    fun performBackupSimple(context: Context) {
+        performBackup(context)   // uses the default onProgress = {}
+    }
+
     private fun backupFile(file: File) {
         val cipher = Cipher.getInstance(ALGO)
         cipher.init(Cipher.ENCRYPT_MODE, secretKey)
