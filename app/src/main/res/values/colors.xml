@@ -1,13 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Status colors -->
-    <color name="status_available">#4CAF50</color>
-    <color name="status_unavailable">#F44336</color>
-    <color name="status_warning">#FFD54F</color>
+    <color name="ink">#07111F</color>
+    <color name="ink_soft">#0D1B2B</color>
+    <color name="surface">#F7F9FC</color>
+    <color name="surface_raised">#FFFFFF</color>
+    <color name="text_primary">#F7FAFC</color>
+    <color name="text_secondary">#A9B7C8</color>
+    <color name="text_dark">#142033</color>
+    <color name="text_dark_secondary">#657287</color>
+    <color name="brand">#63E6BE</color>
+    <color name="brand_dark">#1AA981</color>
+    <color name="warning">#FFCB66</color>
+    <color name="danger">#FF6B6B</color>
+    <color name="danger_dark">#A73545</color>
+    <color name="line_dark">#23344B</color>
+    <color name="status_available">#63E6BE</color>
+    <color name="status_unavailable">#FF7A85</color>
+    <color name="status_warning">#FFCB66</color>
     <color name="status_white">#FFFFFF</color>
-    
-    <!-- Theme colors -->
-    <color name="colorPrimary">#6200EE</color>
-    <color name="colorPrimaryDark">#3700B3</color>
-    <color name="colorAccent">#03DAC5</color>
+    <color name="colorPrimary">#1AA981</color>
+    <color name="colorPrimaryDark">#07111F</color>
+    <color name="colorAccent">#63E6BE</color>
 </resources>

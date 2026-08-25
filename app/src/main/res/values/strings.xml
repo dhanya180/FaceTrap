@@ -1,9 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">FaceTrap</string>
-    <string name="scanning">Scanning…</string>
+    <string name="scanning">Looking for a face…</string>
+    <string name="on_device_identity">On-device identity</string>
+    <string name="system_ready">System ready</string>
+    <string name="private_processing">● Private on-device processing</string>
+    <string name="position_face">Position your face inside the frame</string>
+    <string name="live_result">Live recognition</string>
+    <string name="scanning_detail">Keep still and face the camera. Detection, alignment, and identity matching run automatically.</string>
     <string name="simulation_only">SIMULATION ONLY</string>
-    <string name="availability_event">SYSTEM UNAVAILABILITY EVENT</string>
+    <string name="availability_event">Availability impact detected</string>
+    <string name="incident_console">Incident console</string>
+    <string name="incident_subtitle">A target identity match activated the Android file-availability demonstration.</string>
+    <string name="demonstration_timer">Demonstration timer</string>
+    <string name="timer_description">Visual countdown only — no automatic action at zero</string>
+    <string name="impact_summary">Impact summary</string>
+    <string name="affected_shared_files">Eligible shared-storage files</string>
+    <string name="affected_scope_detail">Documents  •  Downloads  •  Pictures\nApp-private package data is excluded from processing.</string>
+    <string name="encryption_method">Method</string>
+    <string name="aes_method">AES-256-GCM</string>
+    <string name="output_format">Output</string>
+    <string name="backup_extension">Encrypted .bak files</string>
+    <string name="demo_notice_title">Controlled emulator demonstration</string>
+    <string name="demo_notice_body">Run only in the dedicated course emulator. The event record below shows the trigger identity, confidence, timestamp, scope, and tracked decoy-file hashes.</string>
+    <string name="event_manifest">Event manifest</string>
     <string name="countdown_initial">01:00:00</string>
     <string name="countdown_finished">00:00:00</string>
     <string name="simulation_safety_notice">⚠️ DEMONSTRATION ONLY: No user files were touched. No encryption, deletion, network access, persistence, or elevated permission is present. This simulates file system unavailability to demonstrate the concept.</string>

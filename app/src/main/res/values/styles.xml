@@ -1,10 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.FaceTrap" parent="Theme.AppCompat.DayNight.NoActionBar"/>
+    <style name="Theme.FaceTrap" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">@color/brand</item>
+        <item name="android:navigationBarColor">@color/ink</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowActionModeOverlay">true</item>
+    </style>
     <style name="Theme.FaceTrap.Incident" parent="Theme.FaceTrap">
         <item name="android:windowFullscreen">true</item>
-        <item name="android:windowBackground">#210000</item>
-        <item name="android:navigationBarColor">#210000</item>
-        <item name="android:fontFamily">sans</item>
+        <item name="android:windowBackground">@color/ink</item>
+        <item name="android:navigationBarColor">@color/ink</item>
+    </style>
+
+    <style name="TextAppearance.FaceTrap.Eyebrow" parent="android:style/TextAppearance.Material.Caption">
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:letterSpacing">0.16</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textSize">11sp</item>
+    </style>
+
+    <style name="TextAppearance.FaceTrap.Title" parent="android:style/TextAppearance.Material.Headline">
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">28sp</item>
     </style>
 </resources>
