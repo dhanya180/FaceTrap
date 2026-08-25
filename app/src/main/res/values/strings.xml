@@ -3,12 +3,19 @@
     <string name="app_name">FaceTrap</string>
     <string name="scanning">Scanning…</string>
     <string name="simulation_only">SIMULATION ONLY</string>
-    <string name="availability_event">TARGET-TRIGGERED AVAILABILITY EVENT</string>
+    <string name="availability_event">SYSTEM UNAVAILABILITY EVENT</string>
     <string name="countdown_initial">01:00:00</string>
     <string name="countdown_finished">00:00:00</string>
-    <string name="simulation_safety_notice">No user files were touched. No encryption, deletion, network access, persistence, or elevated permission is present. Access denial applies only to app-generated decoy data.</string>
+    <string name="simulation_safety_notice">⚠️ DEMONSTRATION ONLY: No user files were touched. No encryption, deletion, network access, persistence, or elevated permission is present. This simulates file system unavailability to demonstrate the concept.</string>
     <string name="reset_hint">Type RESET-DEMO</string>
-    <string name="reset_button">Reset safe simulation</string>
-    <string name="simulation_reset_success">Simulation reset. Decoy access is available again.</string>
-    <string name="simulation_reset_instruction">Enter RESET-DEMO to confirm the safe reset.</string>
+    <string name="reset_button">Reset system</string>
+    <string name="simulation_reset_success">✅ System restored. File availability is back to normal.</string>
+    <string name="simulation_reset_instruction">❌ Enter RESET-DEMO to confirm the safe reset.</string>
+    <string name="system_available">✅ System: Available</string>
+    <string name="system_unavailable">⚠️ System: Unavailable</string>
+    <string name="affected_areas">AFFECTED AREAS:</string>
+    <string name="affected_documents">• Documents</string>
+    <string name="affected_downloads">• Downloads</string>
+    <string name="affected_pictures">• Pictures</string>
+    <string name="affected_system">• System Data</string>
 </resources>

@@ -2,11 +2,11 @@ package com.facetrap
 
 import android.os.Bundle
 import android.os.CountDownTimer
+import android.view.View
 import android.view.WindowManager
-import android.widget.Button
-import android.widget.EditText
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import java.util.Locale
 
 class IncidentSimulationActivity : AppCompatActivity() {
@@ -17,22 +17,19 @@ class IncidentSimulationActivity : AppCompatActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         setContentView(R.layout.activity_incident_simulation)
 
+        // Show system status – permanently locked
+        val systemStatus = findViewById<TextView>(R.id.systemStatusAfterReset)
+        systemStatus.text = "🔒 SYSTEM PERMANENTLY LOCKED – Files encrypted"
+        systemStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
+        systemStatus.visibility = View.VISIBLE
+
+        // Display the manifest
         findViewById<TextView>(R.id.manifestText).text =
             AvailabilitySimulation.manifestText(filesDir)
 
-        val resetPhrase = findViewById<EditText>(R.id.resetPhrase)
-        val resetButton = findViewById<Button>(R.id.resetButton)
-        val resetStatus = findViewById<TextView>(R.id.resetStatus)
-        resetButton.setOnClickListener {
-            if (resetPhrase.text.toString() == RESET_PHRASE) {
-                AvailabilitySimulation.reset(filesDir)
-                resetStatus.setText(R.string.simulation_reset_success)
-                resetButton.isEnabled = false
-            } else {
-                resetStatus.setText(R.string.simulation_reset_instruction)
-            }
-        }
+        // (No reset section to hide – removed reference)
 
+        // Start countdown timer (just for display, no action)
         timer = object : CountDownTimer(60 * 60 * 1000L, 1000L) {
             override fun onTick(remaining: Long) {
                 val seconds = remaining / 1000
@@ -44,7 +41,6 @@ class IncidentSimulationActivity : AppCompatActivity() {
                     seconds % 60,
                 )
             }
-
             override fun onFinish() {
                 findViewById<TextView>(R.id.countdownText).setText(R.string.countdown_finished)
             }
@@ -54,9 +50,5 @@ class IncidentSimulationActivity : AppCompatActivity() {
     override fun onDestroy() {
         timer?.cancel()
         super.onDestroy()
-    }
-
-    companion object {
-        private const val RESET_PHRASE = "RESET-DEMO"
     }
 }

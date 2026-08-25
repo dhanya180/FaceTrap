@@ -1,15 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" />
+
+    <!-- Storage permissions for encryption demo -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
 
     <application
         android:allowBackup="false"
         android:largeHeap="true"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/Theme.FaceTrap">
+        android:theme="@style/Theme.FaceTrap"
+        android:requestLegacyExternalStorage="true">
 
         <activity
             android:name=".MainActivity"

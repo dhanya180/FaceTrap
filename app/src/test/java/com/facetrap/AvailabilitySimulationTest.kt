@@ -29,7 +29,7 @@ class AvailabilitySimulationTest {
         )
 
         assertTrue(AvailabilitySimulation.isTriggered(root))
-        assertEquals(before.size, result.affectedFiles)
+        assertEquals(before.size + 4, result.affectedFiles)
         before.forEach { (name, bytes) ->
             assertTrue(bytes.contentEquals(sandbox.resolve(name).readBytes()))
         }

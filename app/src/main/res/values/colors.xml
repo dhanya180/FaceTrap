@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Status colors -->
+    <color name="status_available">#4CAF50</color>
+    <color name="status_unavailable">#F44336</color>
+    <color name="status_warning">#FFD54F</color>
+    <color name="status_white">#FFFFFF</color>
+    
+    <!-- Theme colors -->
+    <color name="colorPrimary">#6200EE</color>
+    <color name="colorPrimaryDark">#3700B3</color>
+    <color name="colorAccent">#03DAC5</color>
+</resources>

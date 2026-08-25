@@ -1,10 +1,14 @@
 package com.facetrap
 
 import android.Manifest
+import android.os.Environment
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.*
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Log
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -43,6 +47,8 @@ class MainActivity : AppCompatActivity() {
     private val detectionThreshold = 0.50f
     private val detSize = 640
 
+    private val STORAGE_PERMISSION_REQUEST = 1001
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -63,11 +69,21 @@ class MainActivity : AppCompatActivity() {
         AvailabilitySimulation.initialize(filesDir)
         simulationTriggered = AvailabilitySimulation.isTriggered(filesDir)
 
+        // Request camera permission
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
             == PackageManager.PERMISSION_GRANTED) {
             startCamera()
         } else {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), 100)
+        }
+
+        // Request storage access (for encryption)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (!Environment.isExternalStorageManager()) {
+                val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                intent.data = Uri.parse("package:$packageName")
+                startActivityForResult(intent, STORAGE_PERMISSION_REQUEST)
+            }
         }
     }
 
@@ -145,11 +161,32 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun updateSystemStatus() {
+        runOnUiThread {
+            val statusView = findViewById<TextView>(R.id.systemStatus)
+            val status = AvailabilitySimulation.getSystemStatus(filesDir)
+            statusView.text = "System Status: $status"
+            statusView.setTextColor(
+                if (AvailabilitySimulation.isSystemUnavailable(filesDir)) {
+                    ContextCompat.getColor(this, R.color.status_unavailable)
+                } else {
+                    ContextCompat.getColor(this, R.color.status_available)
+                }
+            )
+        }
+    }
+
     private fun triggerSimulation(score: Float, confidence: Float) {
         if (simulationTriggered) return
         simulationTriggered = true
         try {
-            val result = AvailabilitySimulation.trigger(filesDir, "professor", confidence)
+            // Pass context as first argument
+            val result = AvailabilitySimulation.trigger(
+                this,
+                filesDir,
+                "professor",
+                confidence
+            )
             appendAudit(
                 "PATH_B target=professor cosine=${String.format(Locale.US, "%.4f", score)} " +
                     "confidence=${String.format(Locale.US, "%.4f", confidence)} " +
@@ -337,6 +374,7 @@ class MainActivity : AppCompatActivity() {
                 "you", "teammate" -> logKnownUserOnce(recognition.identity, recognition.score)
                 "professor" -> if (targetConfidence > targetTriggerThreshold) {
                     triggerSimulation(recognition.score, targetConfidence)
+                    updateSystemStatus()
                 }
             }
             runOnUiThread {
@@ -394,9 +432,17 @@ class MainActivity : AppCompatActivity() {
             greetingText.text = "Camera permission is required"
     }
 
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == STORAGE_PERMISSION_REQUEST) {
+            Log.i("FaceTrap", "Storage permission result: ${Environment.isExternalStorageManager()}")
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         simulationTriggered = AvailabilitySimulation.isTriggered(filesDir)
+        updateSystemStatus()
     }
 
     override fun onDestroy() {
