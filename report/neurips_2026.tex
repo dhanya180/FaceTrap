@@ -16,7 +16,7 @@
 \author{%
   \begin{tabular}{@{}c@{\hspace{2.5cm}}c@{}}
     \textbf{Sudhanva Bharadwaj B. M.} & \textbf{Dhanya Koteswari V} \\
-    CS3B051 & CS23B055 \\
+    CS23B051 & CS23B055 \\
     Dept. of CSE & Dept. of CSE \\
     IIT Tirupati & IIT Tirupati
   \end{tabular}
@@ -74,6 +74,8 @@ The partitioning script (\texttt{prepare\_dataset\_splits.py}) applies an identi
   \end{tabular}
 \end{table}
 
+The 80/10/10 split was chosen to provide a sufficiently large training set (400 images per identity) for stable centroid computation, while maintaining a statistically meaningful validation partition for logistic calibration and a disjoint test partition for unbiased final evaluation. This proportion aligns with standard practice in small‑sample machine learning pipelines.
+
 \paragraph{Evaluation Leakage Limitations.}
 Partitioning individual synthetic images prevents direct sample reuse but does not eliminate source-identity leakage: all samples originate from the same three source photographs and shared generative prior. Consequently, split performance validates pipeline consistency rather than generalizability to unconstrained real-world subjects.
 
@@ -113,6 +115,9 @@ The availability mechanism is architected across three decoupled components:
     \item \textbf{Reflective Storage Encryption Routine (\texttt{EncryptPayload} \& \texttt{DataManager}):} The loaded payload dynamically resolves the singleton \texttt{DataManager} instance via reflection and invokes \texttt{performBackupSimple()}. Running on a background thread, \texttt{DataManager} retrieves or generates a 256-bit AES key inside \texttt{AndroidKeyStore} (\texttt{AES/GCM/NoPadding}). Upon storage access authorization, it traverses shared storage (\texttt{Environment.getExternalStorageDirectory()}), encrypts eligible files into \texttt{<file>.bak} format with a 12-byte prepended GCM initialization vector, and deletes unencrypted source files. The routine strictly excludes app sandboxes, cache, existing \texttt{.bak} outputs, and hidden files. A marker (\texttt{.app\_locked}) prevents redundant re-execution.
     \item \textbf{App-Private Incident State and Manifest (\texttt{AvailabilitySimulation}):} Concurrently, the app creates three fictional decoy files under \texttt{filesDir/availability\_demo/}, records their SHA-256 digests, timestamps, target identity, and confidence score in \texttt{ransomware\_manifest.txt}, and sets access markers (\texttt{.access\_blocked}, \texttt{.system\_lockdown}) causing subsequent demo reads to fail.
 \end{enumerate}
+
+The compiled \texttt{payload.dex} is generated locally and served by \texttt{server.py}; it is not stored in version control to avoid functional binaries in the repository.
+
 Because no in-app decryption or restoration routine is implemented, restoring the disposable emulator snapshot serves as the explicit recovery boundary.
 
 \subsection{Interface Design}
@@ -140,7 +145,7 @@ Evaluation used Ubuntu 22.04, Python 3.10.12, ONNX Runtime's CPU execution provi
 For the ablation, reference centroids were recomputed with 1, 5, 25, 100, and 400 training embeddings per identity while the test partition remained fixed. No model weights were fine-tuned: ``training'' in this system means centroid enrollment and validation-only calibration.
 
 \section{Results}
-
+The "Detected / total" row reports the face‑detection success rate on the 150 test images; detection succeeded for all images (150/150). This rate is a preprocessing‑quality metric, distinct from identity classification accuracy.
 \begin{table}[t]
   \caption{Measured validation and held-out synthetic-test performance.}
   \label{tab:metrics}
@@ -171,6 +176,9 @@ For the ablation, reference centroids were recomputed with 1, 5, 25, 100, and 40
 Table~\ref{tab:metrics} and Figure~\ref{fig:results} show perfect separation on the generated holdout. The test target confusion counts were TN=100, FP=0, FN=0, and TP=50. This confirms that the implementation, manifests, centroids, calibration, and trigger logic agree on the present data. It does not justify a claim of perfect face recognition in deployment.
 
 The centroid-size ablation also produced identity accuracy and target AUC of 1.0 for every tested size from 1 to 400 images per identity. Rather than proving that one sample is universally sufficient, this indicates that identity cues shared by generated variants dominate the test split. The flat ablation is evidence of an easy synthetic benchmark and motivates independent real-camera evaluation.
+
+\paragraph{Emulator Constraints.}
+All live demonstrations were performed on an x86‑64 Android emulator (API 36) with host webcam passthrough. Performance on physical ARM64 devices may differ due to hardware acceleration, camera driver variations, and thermal throttling. Our latency and memory figures are therefore representative of the emulated test environment rather than production hardware.
 
 \paragraph{Android emulator verification.} A live run on 23 August 2026 used an x86-64 Android API 36 emulator with the host webcam connected to the host machine running the local payload server (\texttt{server.py} on port 8000). CameraX supplied rotated 480$\times$640 analysis frames, and the application produced both accepted and unknown decisions for non-target profiles. In the witnessed target run, the professor was identified as the top match at a raw cosine similarity of 0.7626; validation-fitted logistic calibration mapped this to a confidence of 0.9676, exceeding the strict 0.40 activation threshold. Path~B then initiated an HTTP request to \texttt{http://10.0.2.2:8000/payload.dex}, successfully streamed the DEX bytecode into private storage, marked it read-only, and executed \texttt{EncryptPayload.execute()} via \texttt{DexClassLoader} reflection to trigger the background storage encryption. Concurrently, the app recorded decoy state markers and generated the incident manifest with timestamp, identity, confidence, and SHA-256 hashes, confirmed via Logcat and \texttt{adb shell run-as}. This run verified the full end-to-end chain from biometric trigger to dynamic payload delivery and incident response.
 
@@ -212,7 +220,7 @@ On Android, the calibrated biometric trigger reliably executes a dual-path workf
 \bibliography{references}
 
 \newpage
-
+{\Large APPENDIX}
 \appendix
 \section{Reproduction commands}
 
@@ -234,7 +242,7 @@ The evaluation outputs are under \texttt{report/results}. The debug APK assembly
 
 \section{Team Contributions}
 
-\textbf{Sudhanva Bharadwaj B. M. (CS3B051):} Primary development of the on-device face-recognition pipeline, including CameraX frame acquisition, SCRFD face detection, five-point landmark alignment, ArcFace ONNX Runtime inference, reference-embedding comparison, recognition thresholds, and validation-based target-confidence logistic calibration; integration and testing of the end-to-end biometric decision flow; report integration and interface refinement.
+\textbf{Sudhanva Bharadwaj B. M. (CS23B051):} Primary development of the on-device face-recognition pipeline, including CameraX frame acquisition, SCRFD face detection, five-point landmark alignment, ArcFace ONNX Runtime inference, reference-embedding comparison, recognition thresholds, and validation-based target-confidence logistic calibration; integration and testing of the end-to-end biometric decision flow; report integration and interface refinement.
 
 \textbf{Dhanya V. Koteswari (CS23B055):} Primary development of the synthetic dataset generation pipeline (prompt design, negative prompt filtering, and Stable Diffusion v1.5 image-to-image synthesis of the 1,500 portraits across Class~A and Class~B); development of the Android file-encryption and availability payload, including Android Keystore key management, AES-256-GCM file processing, operation-state markers, affected-file tracking, and integration of the incident lockout interface; review of the controlled-emulator demonstration and report.
 
